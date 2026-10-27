@@ -40,6 +40,8 @@ class Context:
         self._browser = None
         self._page = None
         self._lock = threading.Lock()
+        self._net_logs = []
+        self._console_lines = []
 
     # ---- 生命周期 ----
     def _ensure(self):
@@ -60,6 +62,12 @@ class Context:
             viewport={"width": self.viewport[0], "height": self.viewport[1]},
         )
         self._page = ctx.new_page()
+        # 对齐 ruyiJS：监听 console 与网络响应，供 console_log / api_log / net_log 取回
+        self._page.on("console", lambda msg: self._console_lines.append(
+            {"ts": time.time(), "type": msg.type, "text": msg.text[:500]}))
+        self._page.on("response", lambda resp: self._net_logs.append(
+            {"ts": time.time(), "event": "response", "url": resp.url,
+             "status": resp.status}))
 
     def open(self, url, wait_ms=2000, wait_until="domcontentloaded"):
         """打开页面并等 JS 执行（对齐 ruyiJS: 执行网站自己的 JS）"""
@@ -68,7 +76,13 @@ class Context:
             resp = self._page.goto(url, timeout=self.timeout, wait_until=wait_until)
             if wait_ms:
                 self._page.wait_for_timeout(wait_ms)
+            self._net_logs.append({"ts": time.time(), "event": "navigate", "url": url,
+                                   "status": resp.status if resp else 0})
             return resp.status if resp else 0
+
+    def navigate(self, url, wait_ms=2000, wait_until="domcontentloaded"):
+        """导航到新页面（对齐 ruyiJS navigate(url)），等价 open()。"""
+        return self.open(url, wait_ms=wait_ms, wait_until=wait_until)
 
     def run_js(self, js, timeout_ms=15000):
         """在页面上下文执行任意 JS，返回结果（对齐 ruyiJS run JS API）。
@@ -83,13 +97,20 @@ class Context:
                 raw = self._page.evaluate(js, timeout=timeout_ms)
             return _safe_parse(raw)
 
+    def eval(self, code, timeout_ms=15000):
+        """执行 JS 表达式并返回结果（对齐 ruyiJS eval(code, ...)），等价 run_js。"""
+        return self.run_js(code, timeout_ms=timeout_ms)
+
     def fetch(self, url, method="GET", headers=None, body=None, wait_ms=1000):
         """在浏览器上下文内 fetch（走 Necko 对等的浏览器网络栈，带真实指纹/cookie）"""
         self._ensure()
         with self._lock:
             js = "fetch('%s',%s).then(r=>r.text()).catch(e=>'ERR:'+e.message)" % (
                 url, json.dumps(_fetch_init(method, headers, body)))
-            return self._page.evaluate(js, timeout=self.timeout)
+            result = self._page.evaluate(js, timeout=self.timeout)
+            self._net_logs.append({"ts": time.time(), "event": "fetch",
+                                   "method": method, "url": url})
+            return result
 
     def click(self, selector, wait_ms=1500):
         """点击页面内元素（如验证按钮/链接），返回点击后标题"""
@@ -228,6 +249,18 @@ class Context:
                 self._console_lines = []
             return logs
 
+    def net_log(self, clear=False):
+        """返回网络活动日志（对齐 ruyiJS net_log()）：navigate / fetch 记录。"""
+        with self._lock:
+            logs = list(getattr(self, "_net_logs", []))
+            if clear:
+                self._net_logs = []
+            return logs
+
+    def api_log(self, clear=False):
+        """返回页面内 API/console 日志（对齐 ruyiJS api_log()）。"""
+        return self.console_log(clear=clear)
+
     def close(self):
         with self._lock:
             if self._browser is not None:
@@ -286,9 +319,9 @@ def quick(js_or_url, proxy=None, wait_ms=2000):
         ctx.close()
 
 
-if __name__ == "__main__":
+def main():
+    """CLI 入口：python -m ruyijs_linux <url> [js] 或 pip 安装后的 ruyijs-linux 命令。"""
     import sys
-    # CLI: ruyijs_linux.py <url> [js]
     url = sys.argv[1] if len(sys.argv) > 1 else "https://example.com"
     js = sys.argv[2] if len(sys.argv) > 2 else "document.title"
     with Context() as ctx:
@@ -296,3 +329,7 @@ if __name__ == "__main__":
         print("URL:", ctx.url())
         print("TITLE:", ctx.title())
         print("JS 结果:", ctx.run_js(js))
+
+
+if __name__ == "__main__":
+    main()

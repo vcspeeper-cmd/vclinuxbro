@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruyijs-linux"
+version = "0.1.0"
+description = "ruyiJS 的 Linux 自托管开源实现 —— 真实浏览器引擎（Camoufox/Firefox）执行网站 JS，隔离 Context API，全链路开源可审计"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "vcspeeper-cmd" }]
+keywords = ["ruyijs", "headless", "firefox", "camoufox", "antibot", "js"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+]
+dependencies = [
+    "camoufox>=0.4",
+    "playwright>=1.40",
+]
+
+[project.scripts]
+ruyijs-linux = "ruyijs_linux:main"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools]
+py-modules = ["ruyijs_linux"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

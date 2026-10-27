@@ -9,6 +9,7 @@
 > **许可修正**：GitHub API 显示 NOASSERTION 是误判，仓库顶层实际为 **MPL-2.0**（Mozilla Public License 2.0，弱 copyleft，允许再分发/修改）。
 > Linux 重建路径（完整调研，编译暂缓）见 [`audit/LINUX_REBUILD_PATH.md`](audit/LINUX_REBUILD_PATH.md)（SpiderMonkey 158 源码获取 / urlpattern / NSS→OpenSSL 替代 / 组件清单）。
 > wheel 内 Python 网络栈源码（80 文件，含 `ruyijs_necko/` 纯 Python worker 框架 + `necko/` 传输层）已提取入库 [`vendor/necko-python-src/`](vendor/necko-python-src/)。
+> ruyiJS 官方 Python 绑定源码（`python/ruyijs` 20 文件 + `src/client` C ABI 5 文件，未改字节、sha256 留档）已 vendor 入库 [`vendor/ruyijs-binding-src/`](vendor/ruyijs-binding-src/)。
 
 ## 为什么做这个
 
@@ -37,28 +38,34 @@ ruyiJS（`martinkeith700/ruyiJS`，已 fork 到 `vcspeeper-cmd/ruyiJS` 供审计
 
 ## 能力对照（ruyiJS API → 本实现）
 
-| ruyiJS API                                          | 语义                 | ruyijs-linux 对应                   |
-| --------------------------------------------------- | -------------------- | ----------------------------------- |
-| `Context(shell, timeout, environment, mode, proxy)` | 隔离进程 + 独立代理  | `Context(proxy=..., headless=...)`  |
-| `load_page(url, html)` / `navigate(url)`            | 页面加载/导航        | `open(url)`                         |
-| `eval(code, ...)`                                   | 执行 JS 取结果       | `run_js(js)`                        |
-| `set(name, value)`                                  | 设 JS 全局           | `set(name, value)`                  |
-| `expose(fn, name)`                                  | Python 函数暴露给 JS | `expose(name, fn)`                  |
-| `native(name, source)`                              | 注入 JS 定义         | `native(source)`                    |
-| `advance(ms)`                                       | 推进事件循环         | `advance(ms)`                       |
-| `click` / `type` / `press`                          | 输入模拟             | `click` / `type` / `press`          |
-| `export_cookies` / `cookie_header(url)`             | 导出凭证             | `cookies()` / `cookie_header(url)`  |
-| `put_resource(url, body, status)`                   | 请求拦截/注入        | `intercept(pattern, reply, status)` |
-| `console_log()`                                     | 取 console           | `console_log()`                     |
-| `net_log()` / `api_log()`                           | 网络/API 日志        | `console_log()` + 拦截记录          |
-| `configure_fingerprint(f)`                          | 指纹控制             | Camoufox 内置反检测                 |
+| ruyiJS API                                          | 语义                 | ruyijs-linux 对应                                                          |
+| --------------------------------------------------- | -------------------- | -------------------------------------------------------------------------- |
+| `Context(shell, timeout, environment, mode, proxy)` | 隔离进程 + 独立代理  | `Context(proxy=..., headless=...)`                                         |
+| `load_page(url, html)` / `navigate(url)`            | 页面加载/导航        | `open(url)`                                                                |
+| `eval(code, ...)`                                   | 执行 JS 取结果       | `run_js(js)`                                                               |
+| `set(name, value)`                                  | 设 JS 全局           | `set(name, value)`                                                         |
+| `expose(fn, name)`                                  | Python 函数暴露给 JS | `expose(name, fn)`                                                         |
+| `native(name, source)`                              | 注入 JS 定义         | `native(source)`                                                           |
+| `advance(ms)`                                       | 推进事件循环         | `advance(ms)`                                                              |
+| `click` / `type` / `press`                          | 输入模拟             | `click` / `type` / `press`                                                 |
+| `export_cookies` / `cookie_header(url)`             | 导出凭证             | `cookies()` / `cookie_header(url)`                                         |
+| `put_resource(url, body, status)`                   | 请求拦截/注入        | `intercept(pattern, reply, status)`                                        |
+| `console_log()`                                     | 取 console           | `console_log()`                                                            |
+| `net_log()` / `api_log()`                           | 网络/API 日志        | `net_log()`（navigate/fetch/response 监听）/ `api_log()` = `console_log()` |
+| `configure_fingerprint(f)`                          | 指纹控制             | Camoufox 内置反检测                                                        |
 
 ## 安装
 
 ```bash
-pip install camoufox
-camoufox fetch          # 下载真实 Firefox 反检测构建（约 1.3GB，可配 gh-proxy 镜像加速）
+# 方式一：从仓库安装（自动拉取 camoufox 依赖）
+pip install git+https://github.com/vcspeaker-cmd/ruyijs-linux.git
+
+# 方式二：本地源码直接使用
+pip install -e .          # 或 pip install camoufox 后把本目录加入 PYTHONPATH
+camoufox fetch            # 下载真实 Firefox 反检测构建（约 1.3GB，可配 gh-proxy 镜像加速）
 ```
+
+安装后提供 `ruyijs-linux` 命令行入口（等价 `python -m ruyijs_linux`）。
 
 ## 用法
 
@@ -92,12 +99,23 @@ python ruyijs_linux.py https://example.com "document.title"
 
 ```
 ruyijs_linux.py            Context API 实现（引擎：Camoufox）
+pyproject.toml             pip 打包元数据 / 依赖 / ruyijs-linux 命令行入口
+LICENSE                    MIT（自研代码）
+tests/smoke_test.py        自检脚本：语法编译 + Context API 契约（18 方法）+ 示例编译（--full 需 camoufox）
 audit/WHITEBOX_AUDIT.md    官方 release 白盒审计报告（sha256 验证 / PE 分析 / 架构揭示 / 重建路径）
 audit/NATIVE_CAPABILITIES.md native 能力审计（三层架构 / RPC op 全集 / Necko 管道协议 / 网络栈源码 / 重建映射）
 audit/LINUX_REBUILD_PATH.md Linux 重建路径调研（SpiderMonkey 158 / urlpattern / NSS→OpenSSL / 组件清单）
 vendor/necko-python-src/   wheel 内 Python 网络栈源码（80 文件，ruyijs_necko 纯 Python + necko 传输层，含逐文件 sha256）
+vendor/ruyijs-binding-src/ 官方 Python 绑定 + C ABI 源码（25 文件，未改字节，sha256 留档）
 vendor/README.md           vendor 来源/排除项/重建含义说明
 examples/verify_demo.py    模拟验证系统示例（加载→执行 JS→提取 token→点击）
+```
+
+## 测试
+
+```bash
+python tests/smoke_test.py        # 无浏览器依赖：语法编译 + API 契约 + 示例编译
+python tests/smoke_test.py --full # 需 camoufox fetch 后：真实启动浏览器做端到端冒烟
 ```
 
 ## 许可证与致谢
