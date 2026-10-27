@@ -5,12 +5,15 @@
 > **安全声明**：官方 ruyiJS 仅发布 Windows x64 wheel（native runtime = SpiderMonkey 158，闭源且不提供 Linux 版）。
 > 本项目**不下载、不运行官方 release 二进制**（其可能含未知风险），而是以「源码审计 + 开源引擎」方式自托管。
 > 官方 release 的白盒审计报告见 [`audit/WHITEBOX_AUDIT.md`](audit/WHITEBOX_AUDIT.md)（纯静态分析，未运行）。
+> Native 能力审计报告见 [`audit/NATIVE_CAPABILITIES.md`](audit/NATIVE_CAPABILITIES.md)（三层架构 / 22 个 RPC op / Necko 管道协议 / 网络栈源码清单 / Linux 重建组件映射）。
+> **许可修正**：GitHub API 显示 NOASSERTION 是误判，仓库顶层实际为 **MPL-2.0**（Mozilla Public License 2.0，弱 copyleft，允许再分发/修改）。
 
 ## 为什么做这个
 
 ruyiJS（`martinkeith700/ruyiJS`，已 fork 到 `vcspeeper-cmd/ruyiJS` 供审计）能用 SpiderMonkey 执行网站自身 JS，
-击败一批验证系统（瑞数/极验/天御/数美/易盾/Akamai/阿里234…）——它们的共性 = **验证逻辑在 JS 里**。
+击败一批验证系统（瑞数/极验/天御/数美/易盾/Akamai/阿里 234…）——它们的共性 = **验证逻辑在 JS 里**。
 但官方 runtime：
+
 - 仅 Windows x64；
 - native 二进制（js.exe）不随源码开源（SpiderMonkey 源码 Mozilla 开源，但 ruyiJS 自研的 40 目录 Web 平台 API 需自编译）。
 
@@ -19,34 +22,34 @@ ruyiJS（`martinkeith700/ruyiJS`，已 fork 到 `vcspeeper-cmd/ruyiJS` 供审计
 
 ## 架构对照（ruyiJS vs ruyijs-linux）
 
-| 层 | ruyiJS（官方） | ruyijs-linux（本项目） |
-|---|---|---|
-| JS 引擎 | SpiderMonkey 158（MPL-2.0，源码需自编译） | Camoufox = 真实 Firefox 内核（MPL-2.0，`pip install camoufox` 即可） |
-| Web 平台 API | 自研 C++（`src/` 40 目录，Windows 专有） | Firefox 原生（完整 DOM/Canvas/WebGL/Crypto/Workers…） |
-| 网络栈 | necko-derived（内嵌 Python 3.14 + requests 系） | Camoufox 内置网络栈 + 浏览器内 fetch |
-| 进程模型 | 每 Context 一个 js.exe 子进程（named pipe RPC） | 每 Context 一个隔离 browser context（独立 cookie/存储/代理） |
-| 指纹控制 | `configure_fingerprint` / `configure_random` / 时钟重放 | Camoufox 反检测伪装（真实 Firefox 指纹）+ 每上下文隔离 |
-| 请求拦截 | `put_resource` / `cookie_header` | `intercept()` 路由拦截 / `cookie_header()` 导出 Cookie 头 |
-| 输入模拟 | `click` / `type` / `press` | `click` / `type` / `press` |
-| JS 执行 | `eval` / `set` / `expose` / `native` | `run_js` / `set` / `expose` / `native` |
+| 层           | ruyiJS（官方）                                          | ruyijs-linux（本项目）                                               |
+| ------------ | ------------------------------------------------------- | -------------------------------------------------------------------- |
+| JS 引擎      | SpiderMonkey 158（MPL-2.0，源码需自编译）               | Camoufox = 真实 Firefox 内核（MPL-2.0，`pip install camoufox` 即可） |
+| Web 平台 API | 自研 C++（`src/` 40 目录，Windows 专有）                | Firefox 原生（完整 DOM/Canvas/WebGL/Crypto/Workers…）                |
+| 网络栈       | necko-derived（内嵌 Python 3.14 + requests 系）         | Camoufox 内置网络栈 + 浏览器内 fetch                                 |
+| 进程模型     | 每 Context 一个 js.exe 子进程（named pipe RPC）         | 每 Context 一个隔离 browser context（独立 cookie/存储/代理）         |
+| 指纹控制     | `configure_fingerprint` / `configure_random` / 时钟重放 | Camoufox 反检测伪装（真实 Firefox 指纹）+ 每上下文隔离               |
+| 请求拦截     | `put_resource` / `cookie_header`                        | `intercept()` 路由拦截 / `cookie_header()` 导出 Cookie 头            |
+| 输入模拟     | `click` / `type` / `press`                              | `click` / `type` / `press`                                           |
+| JS 执行      | `eval` / `set` / `expose` / `native`                    | `run_js` / `set` / `expose` / `native`                               |
 
 ## 能力对照（ruyiJS API → 本实现）
 
-| ruyiJS API | 语义 | ruyijs-linux 对应 |
-|---|---|---|
-| `Context(shell, timeout, environment, mode, proxy)` | 隔离进程 + 独立代理 | `Context(proxy=..., headless=...)` |
-| `load_page(url, html)` / `navigate(url)` | 页面加载/导航 | `open(url)` |
-| `eval(code, ...)` | 执行 JS 取结果 | `run_js(js)` |
-| `set(name, value)` | 设 JS 全局 | `set(name, value)` |
-| `expose(fn, name)` | Python 函数暴露给 JS | `expose(name, fn)` |
-| `native(name, source)` | 注入 JS 定义 | `native(source)` |
-| `advance(ms)` | 推进事件循环 | `advance(ms)` |
-| `click` / `type` / `press` | 输入模拟 | `click` / `type` / `press` |
-| `export_cookies` / `cookie_header(url)` | 导出凭证 | `cookies()` / `cookie_header(url)` |
-| `put_resource(url, body, status)` | 请求拦截/注入 | `intercept(pattern, reply, status)` |
-| `console_log()` | 取 console | `console_log()` |
-| `net_log()` / `api_log()` | 网络/API 日志 | `console_log()` + 拦截记录 |
-| `configure_fingerprint(f)` | 指纹控制 | Camoufox 内置反检测 |
+| ruyiJS API                                          | 语义                 | ruyijs-linux 对应                   |
+| --------------------------------------------------- | -------------------- | ----------------------------------- |
+| `Context(shell, timeout, environment, mode, proxy)` | 隔离进程 + 独立代理  | `Context(proxy=..., headless=...)`  |
+| `load_page(url, html)` / `navigate(url)`            | 页面加载/导航        | `open(url)`                         |
+| `eval(code, ...)`                                   | 执行 JS 取结果       | `run_js(js)`                        |
+| `set(name, value)`                                  | 设 JS 全局           | `set(name, value)`                  |
+| `expose(fn, name)`                                  | Python 函数暴露给 JS | `expose(name, fn)`                  |
+| `native(name, source)`                              | 注入 JS 定义         | `native(source)`                    |
+| `advance(ms)`                                       | 推进事件循环         | `advance(ms)`                       |
+| `click` / `type` / `press`                          | 输入模拟             | `click` / `type` / `press`          |
+| `export_cookies` / `cookie_header(url)`             | 导出凭证             | `cookies()` / `cookie_header(url)`  |
+| `put_resource(url, body, status)`                   | 请求拦截/注入        | `intercept(pattern, reply, status)` |
+| `console_log()`                                     | 取 console           | `console_log()`                     |
+| `net_log()` / `api_log()`                           | 网络/API 日志        | `console_log()` + 拦截记录          |
+| `configure_fingerprint(f)`                          | 指纹控制             | Camoufox 内置反检测                 |
 
 ## 安装
 
@@ -88,6 +91,7 @@ python ruyijs_linux.py https://example.com "document.title"
 ```
 ruyijs_linux.py            Context API 实现（引擎：Camoufox）
 audit/WHITEBOX_AUDIT.md    官方 release 白盒审计报告（sha256 验证 / PE 分析 / 架构揭示 / 重建路径）
+audit/NATIVE_CAPABILITIES.md native 能力审计（三层架构 / RPC op 全集 / Necko 管道协议 / 网络栈源码 / 重建映射）
 examples/verify_demo.py    模拟验证系统示例（加载→执行 JS→提取 token→点击）
 ```
 
