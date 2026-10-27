@@ -7,6 +7,8 @@
 > 官方 release 的白盒审计报告见 [`audit/WHITEBOX_AUDIT.md`](audit/WHITEBOX_AUDIT.md)（纯静态分析，未运行）。
 > Native 能力审计报告见 [`audit/NATIVE_CAPABILITIES.md`](audit/NATIVE_CAPABILITIES.md)（三层架构 / 22 个 RPC op / Necko 管道协议 / 网络栈源码清单 / Linux 重建组件映射）。
 > **许可修正**：GitHub API 显示 NOASSERTION 是误判，仓库顶层实际为 **MPL-2.0**（Mozilla Public License 2.0，弱 copyleft，允许再分发/修改）。
+> Linux 重建路径（完整调研，编译暂缓）见 [`audit/LINUX_REBUILD_PATH.md`](audit/LINUX_REBUILD_PATH.md)（SpiderMonkey 158 源码获取 / urlpattern / NSS→OpenSSL 替代 / 组件清单）。
+> wheel 内 Python 网络栈源码（80 文件，含 `ruyijs_necko/` 纯 Python worker 框架 + `necko/` 传输层）已提取入库 [`vendor/necko-python-src/`](vendor/necko-python-src/)。
 
 ## 为什么做这个
 
@@ -92,6 +94,9 @@ python ruyijs_linux.py https://example.com "document.title"
 ruyijs_linux.py            Context API 实现（引擎：Camoufox）
 audit/WHITEBOX_AUDIT.md    官方 release 白盒审计报告（sha256 验证 / PE 分析 / 架构揭示 / 重建路径）
 audit/NATIVE_CAPABILITIES.md native 能力审计（三层架构 / RPC op 全集 / Necko 管道协议 / 网络栈源码 / 重建映射）
+audit/LINUX_REBUILD_PATH.md Linux 重建路径调研（SpiderMonkey 158 / urlpattern / NSS→OpenSSL / 组件清单）
+vendor/necko-python-src/   wheel 内 Python 网络栈源码（80 文件，ruyijs_necko 纯 Python + necko 传输层，含逐文件 sha256）
+vendor/README.md           vendor 来源/排除项/重建含义说明
 examples/verify_demo.py    模拟验证系统示例（加载→执行 JS→提取 token→点击）
 ```
 

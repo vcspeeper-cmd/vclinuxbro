@@ -1,0 +1,49 @@
+{
+  "profile": "firefox-158",
+  "nss": "3.130",
+  "nspr": "4.40",
+  "neqo": "0.31.1",
+  "firefox": {
+    "vendor": "Mozilla",
+    "name": "Firefox",
+    "remotingname": "firefox",
+    "version": "158.0",
+    "buildid": "20261017012507",
+    "sourcerepository": "https://github.com/mozilla-firefox/firefox",
+    "sourcestamp": "7ee1e738aa3c",
+    "id": "{ec8030f7-c20a-464f-9b0e-13a3a9e97384}"
+  },
+  "source_sha256": {
+    "security/manager/ssl/nsNSSIOLayer.cpp": "a8e3f3dd01b4fcf865073047972b77a8b98b4d666aa7a91f38775bbc353de529",
+    "security/manager/ssl/nsNSSComponent.cpp": "3b602289d196c7ca30cd4e320813f60ccb658b5eba10d757c1ae8b0f263861bf",
+    "security/manager/ssl/EnabledSignatureSchemes.h": "4ad96853de250c0cd0a2dd8ca845b520e4772b4fbf3eed3e06255c52d140b77b",
+    "security/manager/ssl/CommonSocketControl.cpp": "2f4a585a44af0081a9e7aa453acd15f0ce7497e9d730dcf202e67199b099c2bb",
+    "modules/libpref/init/StaticPrefList.yaml": "2ddfb1c6c8d5a86da25913d32abaa7e545485a1650bcbbd733c67c7ef8c3daa3",
+    "modules/libpref/init/all.js": "f23f6eeacc25a2bd2ca29d3b92626dc07ace175e6c827a86294eeacd2be6a780",
+    "netwerk/protocol/http/nsHttpHandler.cpp": "d3f93b410f410eeb6a969d3c85969af6816daa43968c7e1d0964df574cedd16b",
+    "netwerk/protocol/http/nsHttpTransaction.cpp": "dfde3960e155012128ec0a4ced271c74398d349e12b1498afe0e4a5875c1178b",
+    "netwerk/protocol/http/Http2Session.cpp": "4fc44cee43edfababa4a784cd436aeee99c04285d3299e36f371a5cef4afac83",
+    "netwerk/protocol/http/Http2Compression.cpp": "10207ac52156f13d4fa734328c0cb146e64c38ad97ee32d61da34aaab8b0acf8",
+    "netwerk/protocol/http/Http3Session.cpp": "0b6823c7ff2db534d0a128ddd51d2172a8dcad40f78fb8237f7b39c7c0d5a834",
+    "netwerk/protocol/http/Http3Stream.cpp": "f50b3b712375657899c1baa41385e32cfa15150202b3b77b2378e271d58e5fac",
+    "netwerk/protocol/http/nsHttpConnectionMgr.cpp": "1a9a74b60a55a1ce9c01162af4df10ecddf072029ffed331ba6e9a8061c916e9",
+    "security/nss/TAG-INFO": "9bfc4201b47eeb2d73fdeb12fe7de5043ec5640c2f1cd639344ceb2b237939f5",
+    "security/nss/lib/ckfw/builtins/certdata.txt": "beb7e6dfe6499926e52c075c27bcfbe4c957f8609c575b3860273ae2806f63eb",
+    "netwerk/dns/effective_tld_names.dat": "737075296d578aabae00a5871219abc6af1153b0eb3182bad04e533942b44cce"
+  },
+  "runtime_sha256": {
+    "nss3.dll": "9d7fd394f553475502bccdf8b26b8f36c0267f355ec4b6a0bdb2c1b4484cf32b",
+    "softokn3.dll": "b8fc11f61aa9fa9a6723a3248959e4418b26ef153dcd469909283efd8224ddbb",
+    "freebl3.dll": "e2fabaa0f7096f5b3bff95b17456f86156f36e7583a82f667cae2e9a28c63c29",
+    "mozglue.dll": "3d00724f1ada1076668380fa690c169756991f6b65455c0c8050ad46364d1686"
+  },
+  "limitations": [
+    "HTTP/3 requires HTTPS Alt-Svc; DNS HTTPS/ECH configuration is not integrated",
+    "Certificate validation uses cryptography with Firefox root data, not Firefox mozpkix",
+    "Request context is supplied by the caller; no DOM or automatic browser navigation lifecycle",
+    "No partitioned cookie jars, CRLite, HSTS preload or persistent browser cache",
+    "HTTP/2 and HTTP/3 support concurrent streams; complete browser scheduling parity remains under validation",
+    "Connection coalescing and retries follow selected Gecko rules; DNS, speculative connections and browser cache policy differ",
+    "0-RTT advertisement only; application data waits for handshake"
+  ]
+}
