@@ -139,6 +139,95 @@ class Context:
         self._page.screenshot(path=path)
         return path
 
+    # ---- 对齐 ruyiJS API 契约的扩展能力 ----
+    # 对应 ruyiJS: EvaluationControl.set / Context.expose / InputControl / ResourceControl /
+    #              ConsoleControl / SchedulingControl.advance
+
+    def set(self, name, value):
+        """设置 JS 全局变量（对齐 ruyiJS Context.set(name, value)）。"""
+        self._ensure()
+        with self._lock:
+            payload = json.dumps(value, ensure_ascii=True) if not isinstance(value, str) else value
+            self._page.evaluate("window[%s] = %s" % (json.dumps(name), payload))
+
+    def expose(self, name, fn):
+        """把 Python 函数暴露给页面 JS（对齐 ruyiJS expose(function, name)）。
+
+        JS 侧调用 window.<name>(...) 会同步/异步调回 Python。
+        """
+        self._ensure()
+        with self._lock:
+            self._page.expose_function(name, fn)
+
+    def native(self, source, name="__ruyijs_native__"):
+        """向页面注入一段 JS 定义（对齐 ruyiJS native(name, source)）。"""
+        self._ensure()
+        with self._lock:
+            self._page.evaluate(source)
+
+    def type(self, text, selector=None, interval_ms=60):
+        """模拟键盘输入（对齐 ruyiJS InputControl.type）。selector 缺省聚焦当前元素。"""
+        self._ensure()
+        with self._lock:
+            target = self._page.locator(selector) if selector else self._page
+            target.type(text, delay=interval_ms)
+            return {"ok": True, "typed": text}
+
+    def press(self, key, selector=None):
+        """按下一个键（Enter/Tab/...，对齐 ruyiJS InputControl.press）。"""
+        self._ensure()
+        with self._lock:
+            target = self._page.locator(selector) if selector else self._page
+            target.press(key)
+            return {"ok": True, "key": key}
+
+    def advance(self, ms, step_ms=16.667):
+        """推进事件循环 / 等待（对齐 ruyiJS SchedulingControl.advance）。"""
+        self._ensure()
+        with self._lock:
+            steps = max(1, int(ms / step_ms))
+            for _ in range(min(steps, 200)):
+                self._page.wait_for_timeout(step_ms)
+            return True
+
+    def cookie_header(self, url, *, method="GET"):
+        """导出当前上下文对该 URL 的 Cookie 请求头（对齐 ruyiJS cookie_header）。
+
+        返回 "name=value; name2=value2"，可直接用于 requests 会话复用页面登录态。
+        """
+        if self._page is None:
+            return ""
+        try:
+            parts = []
+            for c in self._page.context.cookies(url):
+                parts.append("%s=%s" % (c["name"], c["value"]))
+            return "; ".join(parts)
+        except Exception:
+            return ""
+
+    def intercept(self, pattern, reply=None, status=200, headers=None):
+        """路由拦截：pattern 匹配的请求改为返回本地 reply（对齐 ruyiJS put_resource 的
+        资源注入理念，用于把验证接口的响应替换为可控内容）。
+
+        reply 为 dict/str；传 None 表示仅记录（可配合 console_log 观察）。
+        """
+        self._ensure()
+        with self._lock:
+            body = reply if isinstance(reply, (str, bytes)) else json.dumps(reply)
+            self._page.route(pattern, lambda route: route.fulfill(
+                status=status, body=body, headers=headers or {"Content-Type": "application/json"}))
+            return True
+
+    def console_log(self, clear=False):
+        """取回页面 console 输出（对齐 ruyiJS ConsoleControl.console_log）。"""
+        if self._page is None:
+            return []
+        with self._lock:
+            logs = getattr(self, "_console_lines", [])
+            if clear:
+                self._console_lines = []
+            return logs
+
     def close(self):
         with self._lock:
             if self._browser is not None:
