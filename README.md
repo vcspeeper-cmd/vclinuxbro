@@ -83,7 +83,7 @@ ruyiJS（`martinkeith700/ruyiJS`，已 fork 到 `vcspeeper-cmd/ruyiJS` 供审计
 
 ```bash
 # 方式一：从仓库安装（自动拉取 camoufox 依赖）
-pip install git+https://github.com/vcspeaker-cmd/ruyijs-linux.git
+pip install git+https://github.com/vcspeeper-cmd/vclinuxbro.git
 
 # 方式二：本地源码直接使用
 pip install -e .          # 或 pip install camoufox 后把本目录加入 PYTHONPATH
